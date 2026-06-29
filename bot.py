@@ -52,6 +52,17 @@ def cancel_kb():
         resize_keyboard=True
     )
 
+async def cleanup_client(uid):
+    """Foydalanuvchi clientini to'liq tozalash"""
+    if uid in user_clients:
+        try:
+            await user_clients[uid].disconnect()
+        except:
+            pass
+        del user_clients[uid]
+    phone_hashes.pop(uid, None)
+    user_phones.pop(uid, None)
+
 @dp.message(CommandStart())
 async def cmd_start(msg: Message, state: FSMContext):
     uid = msg.from_user.id
@@ -68,15 +79,9 @@ async def cmd_start(msg: Message, state: FSMContext):
         )
         return
 
-    # Eski clientni tozalash
-    if uid in user_clients:
-        try:
-            await user_clients[uid].disconnect()
-        except:
-            pass
-        del user_clients[uid]
-
+    await cleanup_client(uid)
     await state.clear()
+
     await msg.answer(
         "👋 <b>Forward Bot ga xush kelibsiz!</b>\n\n"
         "Bu bot sizning Telegram akkauntingiz nomidan "
@@ -90,6 +95,8 @@ async def cmd_start(msg: Message, state: FSMContext):
 
 @dp.message(F.text == "❌ Bekor qilish")
 async def cancel(msg: Message, state: FSMContext):
+    uid = msg.from_user.id
+    await cleanup_client(uid)
     await state.clear()
     await msg.answer("❌ Bekor qilindi.", reply_markup=ReplyKeyboardRemove())
 
@@ -102,21 +109,31 @@ async def get_phone(msg: Message, state: FSMContext):
         await msg.answer("❗ To'g'ri format: <code>+998901234567</code>", parse_mode="HTML")
         return
 
+    # Avvalgi clientni to'liq tozalash
+    await cleanup_client(uid)
+
     await msg.answer("⏳ Kod yuborilmoqda...")
 
-    # StringSession - diskka yozmaydi, xotirada saqlaydi
-    client = TelegramClient(StringSession(), API_ID, API_HASH)
+    # iPhone sifatida ko'rinadi — Telegram kam bloklaydi
+    client = TelegramClient(
+        StringSession(),
+        API_ID,
+        API_HASH,
+        device_model="iPhone 13",
+        system_version="iOS 16.0",
+        app_version="9.0.0"
+    )
 
     try:
         await client.connect()
-        result = await client.send_code_request(phone)
+        result = await client.send_code_request(phone, force_sms=True)
         phone_hashes[uid] = result.phone_code_hash
         user_phones[uid]  = phone
         user_clients[uid] = client
 
         await msg.answer(
             "📩 <b>SMS kod yuborildi!</b>\n\n"
-            "Telegram dan kelgan <b>5 xonali kodni</b> yuboring:\n"
+            "Telefoningizga kelgan <b>5 xonali kodni</b> yuboring:\n"
             "<i>(Kod 2 daqiqa ichida kiritilsin)</i>",
             parse_mode="HTML"
         )
@@ -124,7 +141,8 @@ async def get_phone(msg: Message, state: FSMContext):
 
     except Exception as e:
         await client.disconnect()
-        await msg.answer(f"❌ Xato: <code>{e}</code>", parse_mode="HTML")
+        logger.error(f"[{uid}] send_code_request xato: {e}")
+        await msg.answer(f"❌ Xato: <code>{e}</code>\n\nQaytadan /start bosing.", parse_mode="HTML")
 
 @dp.message(Setup.code)
 async def get_code(msg: Message, state: FSMContext):
@@ -133,7 +151,7 @@ async def get_code(msg: Message, state: FSMContext):
 
     client = user_clients.get(uid)
     if not client:
-        await msg.answer("❗ Avval /start ni bosing.")
+        await msg.answer("❗ Sessiya topilmadi. /start bosing.")
         return
 
     try:
@@ -158,10 +176,18 @@ async def get_code(msg: Message, state: FSMContext):
         await state.set_state(Setup.password)
 
     except PhoneCodeInvalidError:
-        await msg.answer("❌ Kod noto'g'ri. Qaytadan kiriting:")
+        await msg.answer(
+            "❌ Kod noto'g'ri yoki eskirgan.\n\n"
+            "Qaytadan /start bosib, yangi kod oling."
+        )
+        await cleanup_client(uid)
+        await state.clear()
 
     except Exception as e:
-        await msg.answer(f"❌ Xato: <code>{e}</code>", parse_mode="HTML")
+        logger.error(f"[{uid}] sign_in xato: {e}")
+        await msg.answer(f"❌ Xato: <code>{e}</code>\n\nQaytadan /start bosing.", parse_mode="HTML")
+        await cleanup_client(uid)
+        await state.clear()
 
 @dp.message(Setup.password)
 async def get_password(msg: Message, state: FSMContext):
@@ -169,11 +195,17 @@ async def get_password(msg: Message, state: FSMContext):
     password = msg.text.strip()
     client   = user_clients.get(uid)
 
+    if not client:
+        await msg.answer("❗ Sessiya topilmadi. /start bosing.")
+        await state.clear()
+        return
+
     try:
         await client.sign_in(password=password)
         await msg.answer(
             "✅ <b>Kirildi!</b>\n\n"
-            "📥 <b>Manba guruh</b> username ini yuboring:",
+            "📥 <b>Manba guruh</b> username ini yuboring:\n"
+            "<i>Misol: testguruh (@ belgisisiz)</i>",
             parse_mode="HTML"
         )
         await state.set_state(Setup.source)
@@ -218,6 +250,7 @@ async def get_keywords(msg: Message, state: FSMContext):
     client = user_clients.get(uid)
     if not client:
         await msg.answer("❗ Sessiya topilmadi. /start dan boshlang.")
+        await state.clear()
         return
 
     user_config[uid] = {
@@ -236,7 +269,7 @@ async def get_keywords(msg: Message, state: FSMContext):
                 await client.forward_messages(target, event.message)
                 logger.info(f"[{uid}] ✅ Forward: {text[:60]}")
             except Exception as e:
-                logger.error(f"[{uid}] ❌ Xato: {e}")
+                logger.error(f"[{uid}] ❌ Forward xato: {e}")
 
     async def run_client():
         try:
@@ -252,7 +285,7 @@ async def get_keywords(msg: Message, state: FSMContext):
         f"📥 Manba: <code>@{source}</code>\n"
         f"📤 Maqsad: <code>@{target}</code>\n"
         f"🔑 Kalit so'zlar: <code>{', '.join(keywords)}</code>\n\n"
-        f"24/7 ishlaydi!",
+        f"✅ 24/7 ishlaydi!",
         parse_mode="HTML",
         reply_markup=stop_kb()
     )
@@ -265,13 +298,7 @@ async def stop_bot_handler(msg: Message, state: FSMContext):
         user_bots[uid].cancel()
         del user_bots[uid]
 
-    if uid in user_clients:
-        try:
-            await user_clients[uid].disconnect()
-        except:
-            pass
-        del user_clients[uid]
-
+    await cleanup_client(uid)
     user_config.pop(uid, None)
     await state.clear()
 
