@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "gunicorn --worker-class=gthread --threads=4 --bind=0.0.0.0:$PORT app:app",
+    "startCommand": "gunicorn --worker-class=gthread --threads=4 --bind=0.0.0.0:${PORT:-8080} app:app",
     "restartPolicyType": "ON_FAILURE"
   }
 }
