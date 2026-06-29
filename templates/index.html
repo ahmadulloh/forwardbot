@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forward Bot Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e8eaf0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      border-radius: 16px;
+      padding: 36px;
+      width: 100%;
+      max-width: 460px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: #229ed9;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    .logo h1 { font-size: 18px; font-weight: 600; color: #fff; }
+    .logo p  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-bottom: 28px;
+      border-bottom: 1px solid #2a2d3a;
+      padding-bottom: 20px;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+      font-size: 12px;
+      color: #4b5563;
+      position: relative;
+    }
+
+    .step.active { color: #229ed9; }
+    .step.done   { color: #10b981; }
+
+    .step-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #2a2d3a;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .step.active .step-num { background: #229ed9; color: #fff; }
+    .step.done   .step-num { background: #10b981; color: #fff; }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    h2 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    p.sub { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 6px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e8eaf0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+      margin-bottom: 14px;
+    }
+
+    input:focus, textarea:focus { border-color: #229ed9; }
+    textarea { resize: none; height: 80px; font-family: inherit; }
+
+    .hint {
+      font-size: 11px;
+      color: #4b5563;
+      margin-top: -10px;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #229ed9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn:hover   { opacity: .85; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.danger  { background: #ef4444; }
+    .btn.success { background: #10b981; }
+
+    .error {
+      background: #2d1a1a;
+      border: 1px solid #ef4444;
+      color: #f87171;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+
+    .status-badge.on  { background: #052e16; color: #4ade80; }
+    .status-badge.off { background: #1f1f1f; color: #6b7280; }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot.on  { background: #4ade80; animation: pulse 1.5s infinite; }
+    .dot.off { background: #6b7280; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .4; }
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #2a2d3a;
+      font-size: 13px;
+    }
+
+    .info-row:last-child { border-bottom: none; }
+    .info-row span:first-child { color: #6b7280; }
+    .info-row span:last-child  { color: #e8eaf0; font-weight: 500; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="logo">
+    <div class="logo-icon">📦</div>
+    <div>
+      <h1>Forward Bot</h1>
+      <p>Telegram guruh forwarder</p>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="s1">
+      <div class="step-num">1</div>
+      Telefon
+    </div>
+    <div class="step" id="s2">
+      <div class="step-num">2</div>
+      Tasdiqlash
+    </div>
+    <div class="step" id="s3">
+      <div class="step-num">3</div>
+      Guruhlar
+    </div>
+    <div class="step" id="s4">
+      <div class="step-num">4</div>
+      Ishlamoqda
+    </div>
+  </div>
+
+  <!-- Panel 1: Telefon -->
+  <div class="panel active" id="p1">
+    <h2>Telefon raqam</h2>
+    <p class="sub">Telegram akkountingiz raqamini kiriting</p>
+    <div class="error" id="e1"></div>
+    <label>Raqam</label>
+    <input type="tel" id="phone" placeholder="+998901234567" />
+    <button class="btn" onclick="sendPhone()">SMS Kod Yuborish →</button>
+  </div>
+
+  <!-- Panel 2: Kod -->
+  <div class="panel" id="p2">
+    <h2>SMS Tasdiqlash</h2>
+    <p class="sub">Telegram ga kelgan kodni kiriting</p>
+    <div class="error" id="e2"></div>
+    <label>SMS Kod</label>
+    <input type="text" id="code" placeholder="12345" maxlength="5" />
+    <label>2FA Parol <span style="color:#4b5563;font-weight:400">(agar o'rnatilgan bo'lsa)</span></label>
+    <input type="password" id="password" placeholder="Parol (ixtiyoriy)" />
+    <button class="btn" onclick="verifyCode()">Tasdiqlash →</button>
+  </div>
+
+  <!-- Panel 3: Guruhlar -->
+  <div class="panel" id="p3">
+    <h2>Guruh sozlamalari</h2>
+    <p class="sub">Qaysi guruhdan qaysi guruhga yuborilsin</p>
+    <div class="error" id="e3"></div>
+    <label>Manba guruh (o'qiladigan)</label>
+    <input type="text" id="source" placeholder="testbotuchunzakz" />
+    <p class="hint">t.me/ dan keyingi qism yoki @username</p>
+    <label>Maqsad guruh (yuboriladigan)</label>
+    <input type="text" id="target" placeholder="shungatashlaydi" />
+    <p class="hint">t.me/ dan keyingi qism yoki @username</p>
+    <label>Kalit so'zlar (vergul bilan)</label>
+    <textarea id="keywords" placeholder="yuk bor, kerak, tonna, toshkent, andijon"></textarea>
+    <button class="btn success" onclick="startBot()">▶ Botni Ishga Tushirish</button>
+  </div>
+
+  <!-- Panel 4: Status -->
+  <div class="panel" id="p4">
+    <h2>Bot holati</h2>
+    <p class="sub">Bot ishlayapti va xabarlarni kuzatyapti</p>
+
+    <div class="status-badge on" id="statusBadge">
+      <div class="dot on" id="statusDot"></div>
+      <span id="statusText">Ishlayapti</span>
+    </div>
+
+    <div id="botInfo">
+      <div class="info-row">
+        <span>Manba</span>
+        <span id="infoSource">—</span>
+      </div>
+      <div class="info-row">
+        <span>Maqsad</span>
+        <span id="infoTarget">—</span>
+      </div>
+      <div class="info-row">
+        <span>Kalit so'zlar</span>
+        <span id="infoKw">—</span>
+      </div>
+    </div>
+
+    <br>
+    <button class="btn danger" onclick="stopBot()">⏹ Botni To'xtatish</button>
+  </div>
+
+</div>
+
+<script>
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  function hideError(id) {
+    document.getElementById(id).style.display = "none";
+  }
+
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById("s" + i).className = "step" + (i < n ? " done" : i === n ? " active" : "");
+      document.getElementById("p" + i).className = "panel" + (i === n ? " active" : "");
+    }
+  }
+
+  async function sendPhone() {
+    hideError("e1");
+    const phone = document.getElementById("phone").value.trim();
+    if (!phone) return showError("e1", "Raqam kiriting");
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = "Yuborilmoqda...";
+
+    const res = await fetch("/send_phone", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone })
+    }).then(r => r.json());
+
+    btn.disabled = false;
+    btn.textContent = "SMS Kod Yuborish →";
+
+    if (res.ok) {
+      setStep(2);
+    } else {
+      showError("e1", res.error || "Xato yuz berdi");
+    }
+  }
+
+  async function verifyCode() {
+    hideError("e2");
+    const code     = document.getElementById("code").value.trim();
+    const password = document.getElementById("password").value.trim();
+    if (!code) return showError("e2", "Kodni kiriting");
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = "Tekshirilmoqda...";
+
+    const res = await fetch("/verify_code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, password })
+    }).then(r => r.json());
+
+    btn.disabled = false;
+    btn.textContent = "Tasdiqlash →";
+
+    if (res.ok) {
+      setStep(3);
+    } else {
+      showError("e2", res.error || "Xato yuz berdi");
+    }
+  }
+
+  async function startBot() {
+    hideError("e3");
+    const source   = document.getElementById("source").value.trim().replace("@", "");
+    const target   = document.getElementById("target").value.trim().replace("@", "");
+    const keywords = document.getElementById("keywords").value.trim();
+
+    if (!source || !target || !keywords) return showError("e3", "Barcha maydonlarni to'ldiring");
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = "Ishga tushirilmoqda...";
+
+    const res = await fetch("/start_bot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source, target, keywords })
+    }).then(r => r.json());
+
+    btn.disabled = false;
+    btn.textContent = "▶ Botni Ishga Tushirish";
+
+    if (res.ok) {
+      document.getElementById("infoSource").textContent = "@" + source;
+      document.getElementById("infoTarget").textContent = "@" + target;
+      document.getElementById("infoKw").textContent     = keywords;
+      setStep(4);
+    } else {
+      showError("e3", res.error || "Xato yuz berdi");
+    }
+  }
+
+  async function stopBot() {
+    await fetch("/stop_bot", { method: "POST" });
+    document.getElementById("statusBadge").className = "status-badge off";
+    document.getElementById("statusDot").className   = "dot off";
+    document.getElementById("statusText").textContent = "To'xtatildi";
+  }
+</script>
+</body>
+</html>
